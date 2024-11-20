@@ -59,19 +59,58 @@ def reset_points(chat_id):
     conn.commit()
 
 
+# Funzione per gestire il comando /help
+@client.on(events.NewMessage(pattern='/help'))
+async def show_help(event):
+    chat_id = event.chat_id
+    delay_help = 15
 
-# Function to send a message and delete it after a delay
-async def send_and_delete_message(chat_id, event, text, delay=3):
+    help_message = """Ciao! Sono FriendBot, il tuo bot per la gestione dei punti amicizia. Ecco cosa posso fare:
+\n1. **Punti Amicizia tramite Sticker**
+- Per aggiungere o togliere punti a qualcuno, rispondi a un messaggio con uno sticker specifico
+- Se usi uno sticker **positivo** (aggiungi punti), l'utente riceverà dei punti amicizia.
+- Se usi uno sticker **negativo** (togli punti), l'utente perderà dei punti amicizia.
+- Ogni sticker ha un ID unico, e ogni gruppo ha il proprio set di sticker che può essere configurato per aggiungere o togliere punti.
+\n2. **comando /leaderboard**
+- Il comando `/leaderboard` mostra la classifica di tutti gli utenti della chat e i loro punti amicizia.
+- I punti vengono visualizzati accanto all'ID dell'utente nella classifica.
+\n3. **comando /reset**
+- Il comando `/reset` resetta i punti di tutti gli utenti nel gruppo. Solo un amministratore può eseguire questa azione.
+\nQuesti sono i comandi principali, se hai bisogno di aiuto, non esitare a chiedere!
+\nA presto!"""
     
-    # Send the message
-    #message = await client.send_message(chat_id, text)
+    # Invia il messaggio al gruppo o alla chat privata
+    await send_and_delete_message(chat_id, event, help_message, delay_help)
+
+
+# Funzione per gestire il comando /leaderboard
+@client.on(events.NewMessage(pattern='/leaderboard'))
+async def show_leaderboard(event):
+    chat_id = event.chat_id
+    delay_leaderboard = 5
+
+    leaderboard = get_leaderboard(chat_id)
+    if leaderboard:
+        leaderboard_message = "\n".join([f"{username}: {points} points" for username, points in leaderboard])
+    else:
+        leaderboard_message = "La leaderboard è vuota."
+    
+    # Invia il messaggio al gruppo o alla chat privata
+    await send_and_delete_message(chat_id, event, leaderboard_message, delay_leaderboard)
+
+
+
+
+# Funzione per mandare un messaggio e cancellarlo dopo "delay" secondi
+async def send_and_delete_message(chat_id, event, text, delay=4):
+
+    # invio del messaggio    
     message = await event.reply(text)
 
-    # Wait for the delay
+    # attesa del delay specificato
     await asyncio.sleep(delay)
-    # Delete the message
+    # cancellamento del messaggio
     await client.delete_messages(chat_id, message)
-
 
 
 # event listener 
@@ -80,7 +119,7 @@ async def handle_message(event):
     chat_id = event.chat_id
 
     # Controllo che il comando sia del reset dei punti
-    if event.text == 'Reset':
+    if event.text == '/reset':
         # Controllo che l'ID sia dell'admin
         if event.sender_id == AdminUserID:
             reset_points(chat_id)
@@ -89,17 +128,17 @@ async def handle_message(event):
             await send_and_delete_message(chat_id, event, "non hai i permessi da admin")
 
 
-    # controllo che il messaggio sia una richiesta della leaderboard
-    if event.text == '\leaderboard':
-        leaderboard = get_leaderboard(chat_id)
-        if leaderboard:
-            leaderboard_message = "\n".join([f"{username}: {points} points" for username, points in leaderboard])
-        else:
-            leaderboard_message = "La leaderboard è vuota."
+    ## controllo che il messaggio sia una richiesta della leaderboard
+    #if event.text == '/leaderboard':
+    #    leaderboard = get_leaderboard(chat_id)
+    #    if leaderboard:
+    #        leaderboard_message = "\n".join([f"{username}: {points} points" for username, points in leaderboard])
+    #    else:
+    #        leaderboard_message = "La leaderboard è vuota."
 
-        #await event.reply(leaderboard_message)
-        await send_and_delete_message(chat_id, event, leaderboard_message)
-        return
+    #    #await event.reply(leaderboard_message)
+    #    await send_and_delete_message(chat_id, event, leaderboard_message)
+    #    return
 
 
 
