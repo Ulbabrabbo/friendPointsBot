@@ -3,6 +3,7 @@ from telethon import TelegramClient, sync, events    # events serve
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetShortName, MessageMediaDocument, DocumentAttributeSticker   # questi dovrebbero servire
 import os
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()  # Carica le variabili da .env
@@ -58,6 +59,21 @@ def reset_points(chat_id):
     conn.commit()
 
 
+
+# Function to send a message and delete it after a delay
+async def send_and_delete_message(chat_id, event, text, delay=3):
+    
+    # Send the message
+    #message = await client.send_message(chat_id, text)
+    message = await event.reply(text)
+
+    # Wait for the delay
+    await asyncio.sleep(delay)
+    # Delete the message
+    await client.delete_messages(chat_id, message)
+
+
+
 # event listener 
 @client.on(events.NewMessage())
 async def handle_message(event):
@@ -68,9 +84,10 @@ async def handle_message(event):
         # Controllo che l'ID sia dell'admin
         if event.sender_id == AdminUserID:
             reset_points(chat_id)
-            await event.reply("I punteggi sono stati resettati per questa chat")
+            await send_and_delete_message(chat_id, event, "I punteggi sono stati resettati per questa chat")
         else:
-            await event.reply("non hai i permessi da admin")
+            await send_and_delete_message(chat_id, event, "non hai i permessi da admin")
+
 
     # controllo che il messaggio sia una richiesta della leaderboard
     if event.text == '\leaderboard':
@@ -80,7 +97,8 @@ async def handle_message(event):
         else:
             leaderboard_message = "La leaderboard è vuota."
 
-        await event.reply(leaderboard_message)
+        #await event.reply(leaderboard_message)
+        await send_and_delete_message(chat_id, event, leaderboard_message)
         return
 
 
@@ -93,7 +111,7 @@ async def handle_message(event):
         if event.sender_id == AdminUserID:
             # aggiunge 100000 punti
             update_points(original_sender_id, chat_id, original_username, 100000)
-            await event.reply(f"{original_username} è stato benedetto con 100000 punti amicizia!")
+            await send_and_delete_message(chat_id, event, f"{original_username} è stato benedetto con 100000 punti amicizia!")
         else: 
             return
 
@@ -106,7 +124,7 @@ async def handle_message(event):
         if event.sender_id == AdminUserID:
             # aggiunge 100000 punti
             update_points(original_sender_id, chat_id, original_username, -100000)
-            await event.reply(f"{original_username} è stato annientato con -100000 punti amicizia!")
+            await send_and_delete_message(chat_id, event, f"{original_username} è stato annientato con -100000 punti amicizia!")
         else: 
             return
             
@@ -122,23 +140,23 @@ async def handle_message(event):
         
         # Controllo che uno non si cambi i punti da solo
         if event.sender_id == original_sender_id and sticker_id == STICKER_ADD_100_ID:
-            await event.reply("non è possibile darsi punti da soli")
+            await send_and_delete_message(chat_id, event, "non è possibile darsi punti da soli")
             return 
 
         # Controllo che uno non si cerchi di levare punti da solo
         if event.sender_id == original_sender_id and sticker_id == STICKER_SUB_100_ID:
-            await event.reply("non è possibile levarsi punti da soli")
+            await send_and_delete_message(chat_id, event, "non è possibile levarsi punti da soli")
             return
 
         # aggiunge o leva punti in base all'ID
         if sticker_id == STICKER_ADD_100_ID:
             # aggiunge 100 punti
             update_points(original_sender_id, chat_id, original_username, 100)
-            await event.reply(f"{original_username} ha ottenuto 100 punti amicizia grandeee!")
+            await send_and_delete_message(chat_id, event, f"{original_username} ha ottenuto 100 punti amicizia grandeee!")
         elif sticker_id == STICKER_SUB_100_ID:
             # leva 100 punti
             update_points(original_sender_id, chat_id, original_username, -100)
-            await event.reply(f"{original_username} ha perso 100 punti amicizia buuuu!")
+            await send_and_delete_message(chat_id, event, f"{original_username} ha perso 100 punti amicizia buuuu!")
 
 
 try:
