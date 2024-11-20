@@ -6,7 +6,9 @@ import os
 import asyncio
 from dotenv import load_dotenv
 
-load_dotenv()  # Carica le variabili da .env
+# Carica le variabili da .env
+
+load_dotenv()  
 
 # accesso alle variabili
 api_id = os.getenv("API_ID")
@@ -34,6 +36,8 @@ CREATE TABLE IF NOT EXISTS points (
 ''')
 conn.commit()
 
+#### FUNZIONI PER GESTIONE DB
+
 # Funzione per modificare i punti dell'utente
 def update_points(user_id, chat_id, username, points_delta):
     cursor.execute("SELECT points FROM points WHERE user_id = ? AND chat_id = ?", (user_id, chat_id))
@@ -59,6 +63,36 @@ def reset_points(chat_id):
     conn.commit()
 
 
+
+#### FUNZIONI PER L'INVIO DEI MESSAGGI DA PARTE DEL BOT
+
+# Funzione per mandare un messaggio e cancellarlo dopo "delay" secondi
+async def send_and_delete_message(chat_id, event, text, delay=4):
+
+    # invio del messaggio    
+    message = await event.reply(text)
+
+    # attesa del delay specificato
+    await asyncio.sleep(delay)
+    # cancellamento del messaggio
+    await client.delete_messages(chat_id, message)
+
+# Funzione per mandare un messaggio e cancellare il messaggio originale e quello nuovo dopo "delay" secondi
+async def send_and_delete_message_and_original(chat_id, event, text, delay=4):
+
+    # invio del messaggio  
+    await event.message.delete()  
+    message = await event.reply(text)
+
+    # attesa del delay specificato
+    await asyncio.sleep(delay)
+    # cancellamento del messaggio
+    await client.delete_messages(chat_id, message)
+
+
+
+#### FUNZIONI PER GESTIONE DEI COMANDI SEMPLICI
+
 # Funzione per gestire il comando /help
 @client.on(events.NewMessage(pattern='/help'))
 async def show_help(event):
@@ -80,8 +114,7 @@ async def show_help(event):
 \nA presto!"""
     
     # Invia il messaggio al gruppo o alla chat privata
-    await send_and_delete_message(chat_id, event, help_message, delay_help)
-
+    await send_and_delete_message_and_original(chat_id, event, help_message, delay_help)
 
 # Funzione per gestire il comando /leaderboard
 @client.on(events.NewMessage(pattern='/leaderboard'))
@@ -96,22 +129,10 @@ async def show_leaderboard(event):
         leaderboard_message = "La leaderboard è vuota."
     
     # Invia il messaggio al gruppo o alla chat privata
-    await send_and_delete_message(chat_id, event, leaderboard_message, delay_leaderboard)
+    await send_and_delete_message_and_original(chat_id, event, leaderboard_message, delay_leaderboard)
 
 
-
-
-# Funzione per mandare un messaggio e cancellarlo dopo "delay" secondi
-async def send_and_delete_message(chat_id, event, text, delay=4):
-
-    # invio del messaggio    
-    message = await event.reply(text)
-
-    # attesa del delay specificato
-    await asyncio.sleep(delay)
-    # cancellamento del messaggio
-    await client.delete_messages(chat_id, message)
-
+#### PARTE PER LA GESTIONE DELLE RISPOSTE CON GLI STICKER
 
 # event listener 
 @client.on(events.NewMessage())
@@ -128,20 +149,6 @@ async def handle_message(event):
             await send_and_delete_message(chat_id, event, "non hai i permessi da admin")
 
 
-    ## controllo che il messaggio sia una richiesta della leaderboard
-    #if event.text == '/leaderboard':
-    #    leaderboard = get_leaderboard(chat_id)
-    #    if leaderboard:
-    #        leaderboard_message = "\n".join([f"{username}: {points} points" for username, points in leaderboard])
-    #    else:
-    #        leaderboard_message = "La leaderboard è vuota."
-
-    #    #await event.reply(leaderboard_message)
-    #    await send_and_delete_message(chat_id, event, leaderboard_message)
-    #    return
-
-
-
     if event.message.is_reply and event.text == 'Bless':
         original_message = await event.message.get_reply_message()
         original_sender_id = original_message.sender_id
@@ -153,7 +160,6 @@ async def handle_message(event):
             await send_and_delete_message(chat_id, event, f"{original_username} è stato benedetto con 100000 punti amicizia!")
         else: 
             return
-
 
     if event.message.is_reply and event.text == 'Nuke':
         original_message = await event.message.get_reply_message()
@@ -197,6 +203,8 @@ async def handle_message(event):
             update_points(original_sender_id, chat_id, original_username, -100)
             await send_and_delete_message(chat_id, event, f"{original_username} ha perso 100 punti amicizia buuuu!")
 
+
+#### AVVIO E CHIUSURA DEL BOT
 
 try:
     client.start(bot_token=bot_token)
